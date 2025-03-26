@@ -3,67 +3,111 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>My Link Host</title>
+    <title>Link Redirector</title>
+    <script>
+        function redirectToLink() {
+            const linkInput = document.getElementById('linkInput');
+            const redirectLink = linkInput.value.trim();
+            
+            // Validate the input
+            if (!redirectLink) {
+                alert('Please enter a valid link');
+                return;
+            }
+            
+            // Ensure the link starts with http:// or https://
+            const formattedLink = redirectLink.startsWith('http://') || redirectLink.startsWith('https://') 
+                ? redirectLink 
+                : 'https://' + redirectLink;
+            
+            // Redirect to the specified link
+            window.location.href = formattedLink;
+        }
+
+        function quickRedirect(url) {
+            window.location.href = url;
+        }
+    </script>
     <style>
         body {
             font-family: Arial, sans-serif;
-            margin: 0;
-            padding: 0;
             display: flex;
             justify-content: center;
             align-items: center;
-            min-height: 100vh;
-            background-color: #f5f5f5;
+            height: 100vh;
+            margin: 0;
+            background-color: #f0f0f0;
         }
         .container {
-            text-align: center;
-            padding: 2rem;
             background-color: white;
+            padding: 30px;
             border-radius: 10px;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-            max-width: 600px;
-            width: 90%;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            text-align: center;
+            width: 350px;
         }
-        h1 {
-            color: #333;
-            margin-bottom: 1.5rem;
+        input {
+            width: 100%;
+            padding: 10px;
+            margin: 10px 0;
+            border: 1px solid #ddd;
+            border-radius: 5px;
         }
-        p {
-            color: #666;
-            margin-bottom: 2rem;
-            line-height: 1.6;
+        .button-group {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 15px;
         }
-        .button {
-            display: inline-block;
-            background-color: #4285f4;
+        .quick-link {
+            background-color: #4CAF50;
             color: white;
-            text-decoration: none;
-            padding: 12px 24px;
-            border-radius: 4px;
-            font-weight: bold;
-            transition: background-color 0.3s;
+            border: none;
+            padding: 10px;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+            flex-grow: 1;
+            margin: 0 5px;
+            font-size: 14px;
         }
-        .button:hover {
-            background-color: #3367d6;
+        .quick-link:hover {
+            background-color: #45a049;
         }
-        footer {
-            margin-top: 2rem;
-            color: #999;
-            font-size: 0.8rem;
+        .redirect-button {
+            background-color: #2196F3;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+            margin-top: 10px;
+        }
+        .redirect-button:hover {
+            background-color: #1976D2;
         }
     </style>
 </head>
 <body>
     <div class="container">
-        <h1>Welcome to My Link Host</h1>
-        <p>Thank you for visiting! Click the button below to access the content.</p>
+        <h2>Link Redirector</h2>
+        <input 
+            type="text" 
+            id="linkInput" 
+            placeholder="Enter link to redirect (e.g., www.example.com)"
+        >
+        <button class="redirect-button" onclick="redirectToLink()">Redirect</button>
         
-        <!-- Replace the URL in the href attribute with your desired link -->
-        <a href="https://example.com" class="button">Click Here to Visit</a>
-        
-        <footer>
-            <p>© 2025 My Link Host. All rights reserved.</p>
-        </footer>
+        <div class="button-group">
+            <button class="quick-link" onclick="quickRedirect('https://www.google.com')">Google</button>
+            <button class="quick-link" onclick="quickRedirect('https://www.youtube.com/')">YouTube</button>
+            <button class="quick-link" onclick="quickRedirect('https://www.wikipedia.org')">Wikipedia</button>
+        </div>
+        <div class="button-group">
+            <button class="quick-link" onclick="quickRedirect('https://www.github.com')">GitHub</button>
+            <button class="quick-link" onclick="quickRedirect('https://marcoroscioli.github.io/idk/')">A game I made</button>
+            <button class="quick-link" onclick="quickRedirect('https://www.chatgpt.com')">ChatGPT</button>
+        </div>
     </div>
 </body>
 </html>

@@ -59,7 +59,7 @@
         <p>Thank you for visiting! Click the button below to access the content.</p>
         
         <!-- Replace the URL in the href attribute with your desired link ->
-        <a href="" class="button">Click Here to Visit</a>
+        <a href="https://marcoroscioli.github.io/idk/" class="button">Click Here to Visit</a>
         
         <footer>
             <p>© 2025 My Link Host. All rights reserved.</p>

@@ -5,23 +5,21 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>HTworkML</title>
     <script>
-        function redirectToLink() {
-            const linkInput = document.getElementById('linkInput');
-            const redirectLink = linkInput.value.trim();
+        function redirectToSearch() {
+            const searchInput = document.getElementById('linkInput');
+            const searchQuery = searchInput.value.trim();
             
             // Validate the input
-            if (!redirectLink) {
-                alert('Please enter a valid link');
+            if (!searchQuery) {
+                alert('Please enter a search term');
                 return;
             }
             
-            // Ensure the link starts with http:// or https://
-            const formattedLink = redirectLink.startsWith('http://') || redirectLink.startsWith('https://') 
-                ? redirectLink 
-                : 'https://' + redirectLink;
+            // Create Google search URL with the query
+            const googleSearchUrl = 'https://www.google.com/search?q=' + encodeURIComponent(searchQuery);
             
-            // Redirect to the specified link
-            window.location.href = formattedLink;
+            // Redirect to Google search
+            window.location.href = googleSearchUrl;
         }
 
         function quickRedirect(url) {
@@ -90,13 +88,13 @@
 </head>
 <body>
     <div class="container">
-        <h2>HTworkML</h2>
+        <h2>HTworkML Search</h2>
         <input 
             type="text" 
             id="linkInput" 
-            placeholder="Enter link to redirect (e.g., www.example.com)"
+            placeholder="Enter search terms..."
         >
-        <button class="redirect-button" onclick="redirectToLink()">Redirect</button>
+        <button class="redirect-button" onclick="redirectToSearch()">Search</button>
         
         <div class="button-group">
             <button class="quick-link" onclick="quickRedirect('https://www.google.com')">Google</button>

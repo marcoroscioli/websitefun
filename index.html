@@ -4,111 +4,535 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>HTworkML</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <script>
         function redirectToSearch() {
             const searchInput = document.getElementById('linkInput');
             const searchQuery = searchInput.value.trim();
+            const searchEngine = document.getElementById('searchEngine').value;
             
             // Validate the input
             if (!searchQuery) {
-                alert('Please enter a search term');
+                showToast('Please enter a search term');
                 return;
             }
             
-            // Create Google search URL with the query
-            const googleSearchUrl = 'https://www.google.com/search?q=' + encodeURIComponent(searchQuery);
+            // Create search URL with the query
+            let searchUrl;
+            if (searchEngine === 'google') {
+                searchUrl = 'https://www.google.com/search?q=' + encodeURIComponent(searchQuery);
+            } else if (searchEngine === 'bing') {
+                searchUrl = 'https://www.bing.com/search?q=' + encodeURIComponent(searchQuery);
+            } else if (searchEngine === 'duckduckgo') {
+                searchUrl = 'https://duckduckgo.com/?q=' + encodeURIComponent(searchQuery);
+            }
             
-            // Redirect to Google search
-            window.location.href = googleSearchUrl;
+            // Redirect to search
+            window.location.href = searchUrl;
         }
 
         function quickRedirect(url) {
             window.location.href = url;
         }
+
+        function showToast(message) {
+            const toast = document.createElement('div');
+            toast.className = 'toast';
+            toast.textContent = message;
+            document.body.appendChild(toast);
+            
+            setTimeout(() => {
+                toast.classList.add('show');
+            }, 10);
+            
+            setTimeout(() => {
+                toast.classList.remove('show');
+                setTimeout(() => {
+                    document.body.removeChild(toast);
+                }, 300);
+            }, 3000);
+        }
+
+        // Theme switcher
+        function switchTheme(theme) {
+            document.body.className = theme;
+            localStorage.setItem('htworkml-theme', theme);
+        }
+
+        // Clock function
+        function updateClock() {
+            const now = new Date();
+            const hours = now.getHours().toString().padStart(2, '0');
+            const minutes = now.getMinutes().toString().padStart(2, '0');
+            const seconds = now.getSeconds().toString().padStart(2, '0');
+            document.getElementById('clock').textContent = `${hours}:${minutes}:${seconds}`;
+        }
+
+        // Initialize when page loads
+        window.onload = function() {
+            // Set saved theme or default
+            const savedTheme = localStorage.getItem('htworkml-theme') || 'green-theme';
+            document.body.className = savedTheme;
+            
+            // Start clock
+            updateClock();
+            setInterval(updateClock, 1000);
+
+            // Add search on Enter key
+            document.getElementById('linkInput').addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') {
+                    redirectToSearch();
+                }
+            });
+
+            // Greeting based on time of day
+            const hour = new Date().getHours();
+            let greeting;
+            if (hour < 12) greeting = "Good morning";
+            else if (hour < 18) greeting = "Good afternoon";
+            else greeting = "Good evening";
+            document.getElementById('greeting').textContent = greeting;
+        }
+
+        // Easter egg
+        let konamiIndex = 0;
+        const konamiCode = [38, 38, 40, 40, 37, 39, 37, 39, 66, 65]; // up up down down left right left right B A
+        
+        document.addEventListener('keydown', function(e) {
+            if (e.keyCode === konamiCode[konamiIndex]) {
+                konamiIndex++;
+                if (konamiIndex === konamiCode.length) {
+                    activateEasterEgg();
+                    konamiIndex = 0;
+                }
+            } else {
+                konamiIndex = 0;
+            }
+        });
+
+        function activateEasterEgg() {
+            document.body.classList.add('easter-egg');
+            showToast('🎮 KONAMI CODE ACTIVATED! 🎮');
+            setTimeout(() => {
+                document.body.classList.remove('easter-egg');
+            }, 5000);
+        }
     </script>
     <style>
+        /* Base styles */
+        * {
+            box-sizing: border-box;
+            transition: all 0.3s ease;
+        }
+        
         body {
-            font-family: Arial, sans-serif;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             display: flex;
+            flex-direction: column;
             justify-content: center;
             align-items: center;
             height: 100vh;
             margin: 0;
             background-color: #336600;
+            transition: background-color 0.5s ease;
         }
+        
         .container {
             background-color: #008080;
             padding: 30px;
-            border-radius: 10px;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            border-radius: 20px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.2);
             text-align: center;
-            width: 1000px;
+            width: 90%;
+            max-width: 1000px;
+            position: relative;
+            overflow: hidden;
         }
+        
+        /* Header section */
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 25px;
+        }
+        
+        .logo {
+            font-size: 2.5em;
+            font-weight: bold;
+            color: white;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+        
+        .logo span {
+            color: #ffcc00;
+        }
+        
+        .utility-bar {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+        
+        .clock {
+            background-color: rgba(0,0,0,0.2);
+            padding: 8px 12px;
+            border-radius: 10px;
+            color: white;
+            font-weight: bold;
+        }
+        
+        /* Search section */
+        .search-container {
+            position: relative;
+            margin: 20px 0;
+        }
+        
+        .search-row {
+            display: flex;
+            gap: 10px;
+        }
+        
+        .search-engine-selector {
+            flex: 0 0 120px;
+            background-color: white;
+            border-radius: 10px;
+            padding: 0 10px;
+            border: none;
+            font-size: 16px;
+        }
+        
         input {
-            width: 100%;
-            padding: 10px;
-            margin: 10px 0;
-            border: 1px solid #ddd;
-            border-radius: 5px;
+            flex: 1;
+            padding: 15px;
+            margin: 0;
+            border: none;
+            border-radius: 10px;
+            font-size: 16px;
+            box-shadow: inset 0 2px 5px rgba(0,0,0,0.1);
         }
+        
+        input:focus {
+            outline: none;
+            box-shadow: 0 0 0 2px #ffcc00;
+        }
+        
+        .redirect-button {
+            background-color: #cc9900;
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 10px;
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 16px;
+            margin-left: 10px;
+        }
+        
+        .redirect-button:hover {
+            background-color: #ffcc00;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+        }
+        
+        /* Quick links section */
+        .quick-links-section {
+            margin-top: 30px;
+        }
+        
+        .section-title {
+            text-align: left;
+            color: white;
+            margin-bottom: 10px;
+            font-weight: 500;
+        }
+        
         .button-group {
             display: flex;
             justify-content: space-between;
-            margin-top: 15px;
+            margin-bottom: 15px;
+            flex-wrap: wrap;
+            gap: 10px;
         }
+        
         .quick-link {
             background-color: #4CAF50;
             color: white;
             border: none;
-            padding: 10px;
-            border-radius: 5px;
+            padding: 15px;
+            border-radius: 10px;
             cursor: pointer;
-            transition: background-color 0.3s ease;
-            flex-grow: 1;
-            margin: 0 5px;
+            flex: 1;
+            min-width: 120px;
             font-size: 14px;
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
         }
+        
         .quick-link:hover {
-            background-color: #45a049;
+            transform: translateY(-3px);
+            box-shadow: 0 6px 12px rgba(0,0,0,0.2);
         }
-        .redirect-button {
-            background-color: #cc9900;
-            color: navy blue;
-            border: none;
-            padding: 10px 20px;
-            border-radius: 5px;
+        
+        .quick-link i {
+            font-size: 1.2em;
+        }
+        
+        /* Theme switcher */
+        .theme-switcher {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            display: flex;
+            gap: 10px;
+        }
+        
+        .theme-btn {
+            width: 25px;
+            height: 25px;
+            border-radius: 50%;
+            border: 2px solid white;
             cursor: pointer;
-            transition: background-color 0.3s ease;
-            margin-top: 10px;
         }
-        .redirect-button:hover {
-            background-color: #996600;
+        
+        .theme-btn:hover {
+            transform: scale(1.2);
+        }
+        
+        .green-btn {
+            background-color: #336600;
+        }
+        
+        .blue-btn {
+            background-color: #003366;
+        }
+        
+        .dark-btn {
+            background-color: #222;
+        }
+        
+        .purple-btn {
+            background-color: #660066;
+        }
+        
+        /* Greeting */
+        .greeting {
+            color: white;
+            font-size: 1.2em;
+            margin-bottom: 20px;
+            text-align: left;
+            padding-left: 5px;
+        }
+        
+        /* Toast notification */
+        .toast {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%) translateY(100px);
+            background-color: rgba(0,0,0,0.8);
+            color: white;
+            padding: 12px 25px;
+            border-radius: 30px;
+            opacity: 0;
+            transition: all 0.3s ease;
+        }
+        
+        .toast.show {
+            transform: translateX(-50%) translateY(0);
+            opacity: 1;
+        }
+        
+        /* Footer */
+        .footer {
+            margin-top: 20px;
+            color: rgba(255,255,255,0.7);
+            font-size: 0.8em;
+        }
+        
+        /* Theme variants */
+        .green-theme {
+            background-color: #336600;
+        }
+        
+        .green-theme .container {
+            background-color: #008080;
+        }
+        
+        .green-theme .quick-link {
+            background-color: #4CAF50;
+        }
+        
+        .blue-theme {
+            background-color: #003366;
+        }
+        
+        .blue-theme .container {
+            background-color: #005580;
+        }
+        
+        .blue-theme .quick-link {
+            background-color: #0077cc;
+        }
+        
+        .dark-theme {
+            background-color: #222;
+        }
+        
+        .dark-theme .container {
+            background-color: #333;
+        }
+        
+        .dark-theme .quick-link {
+            background-color: #444;
+        }
+        
+        .purple-theme {
+            background-color: #660066;
+        }
+        
+        .purple-theme .container {
+            background-color: #990099;
+        }
+        
+        .purple-theme .quick-link {
+            background-color: #cc00cc;
+        }
+        
+        /* Easter egg animation */
+        .easter-egg {
+            animation: rainbow 5s linear infinite;
+        }
+        
+        @keyframes rainbow {
+            0% { background-color: red; }
+            14% { background-color: orange; }
+            28% { background-color: yellow; }
+            42% { background-color: green; }
+            56% { background-color: blue; }
+            70% { background-color: indigo; }
+            84% { background-color: violet; }
+            100% { background-color: red; }
+        }
+        
+        /* Responsive adjustments */
+        @media (max-width: 768px) {
+            .container {
+                width: 95%;
+                padding: 20px;
+            }
+            
+            .logo {
+                font-size: 1.8em;
+            }
+            
+            .button-group {
+                flex-direction: column;
+            }
+            
+            .search-row {
+                flex-direction: column;
+            }
+            
+            .search-engine-selector {
+                flex: 1;
+                width: 100%;
+            }
+            
+            .redirect-button {
+                margin-left: 0;
+                margin-top: 10px;
+            }
         }
     </style>
 </head>
-<body>
+<body class="green-theme">
     <div class="container">
-        <h2>HTworkML Search</h2>
-        <input 
-            type="text" 
-            id="linkInput" 
-            placeholder="Enter search terms..."
-        >
-        <button class="redirect-button" onclick="redirectToSearch()">Search</button>
-        
-        <div class="button-group">
-            <button class="quick-link" onclick="quickRedirect('https://www.google.com')">Google</button>
-            <button class="quick-link" onclick="quickRedirect('https://www.youtube.com/')">YouTube</button>
-            <button class="quick-link" onclick="quickRedirect('https://starblast.io/')">Starblast.io</button>
-            <button class="quick-link" onclick="quickRedirect('https://htmledit.squarefree.com/')">Code compiler</button>
-             <button class="quick-link" onclick="quickRedirect(https:/www.chess.com/')">Play chess</button>
+        <!-- Theme Switcher -->
+        <div class="theme-switcher">
+            <div class="theme-btn green-btn" onclick="switchTheme('green-theme')" title="Green Theme"></div>
+            <div class="theme-btn blue-btn" onclick="switchTheme('blue-theme')" title="Blue Theme"></div>
+            <div class="theme-btn dark-btn" onclick="switchTheme('dark-theme')" title="Dark Theme"></div>
+            <div class="theme-btn purple-btn" onclick="switchTheme('purple-theme')" title="Purple Theme"></div>
         </div>
-        <div class="button-group">
-            <button class="quick-link" onclick="quickRedirect('https://www.geo-fs.com/')">Geo-Fs (flight simulator)</button>
-            <button class="quick-link" onclick="quickRedirect('https://marcoroscioli.github.io/idk/')">A game I made</button>
-            <button class="quick-link" onclick="quickRedirect('https://claude.ai/login')">Claude AI</button>
-            <button class="quick-link" onclick="quickRedirect('https://marcoroscioli.github.io/AAAaA/')">Flight Simulator I made</button>
-             <button class="quick-link" onclick="quickRedirect('https://www.gemstone.academy/')">Learn to code</button>
+        
+        <!-- Header -->
+        <div class="header">
+            <div class="logo">HT<span>work</span>ML</div>
+            <div class="utility-bar">
+                <div class="clock" id="clock">00:00:00</div>
+            </div>
+        </div>
+        
+        <!-- Greeting -->
+        <div class="greeting" id="greeting">Good day</div>
+        
+        <!-- Search Section -->
+        <div class="search-container">
+            <div class="search-row">
+                <select id="searchEngine" class="search-engine-selector">
+                    <option value="google">Google</option>
+                    <option value="bing">Bing</option>
+                    <option value="duckduckgo">DuckDuckGo</option>
+                </select>
+                <input 
+                    type="text" 
+                    id="linkInput" 
+                    placeholder="Enter search terms..."
+                >
+                <button class="redirect-button" onclick="redirectToSearch()">
+                    <i class="fas fa-search"></i> Search
+                </button>
+            </div>
+        </div>
+        
+        <!-- Quick Links Section -->
+        <div class="quick-links-section">
+            <div class="section-title">Popular Sites</div>
+            <div class="button-group">
+                <button class="quick-link" onclick="quickRedirect('https://www.google.com')">
+                    <i class="fab fa-google"></i> Google
+                </button>
+                <button class="quick-link" onclick="quickRedirect('https://www.youtube.com/')">
+                    <i class="fab fa-youtube"></i> YouTube
+                </button>
+                <button class="quick-link" onclick="quickRedirect('https://starblast.io/')">
+                    <i class="fas fa-rocket"></i> Starblast.io
+                </button>
+                <button class="quick-link" onclick="quickRedirect('https://htmledit.squarefree.com/')">
+                    <i class="fas fa-code"></i> Code Compiler
+                </button>
+                <button class="quick-link" onclick="quickRedirect('https://www.chess.com/')">
+                    <i class="fas fa-chess"></i> Chess.com
+                </button>
+            </div>
+            
+            <div class="section-title">My Projects & Tools</div>
+            <div class="button-group">
+                <button class="quick-link" onclick="quickRedirect('https://www.geo-fs.com/')">
+                    <i class="fas fa-plane"></i> Geo-FS
+                </button>
+                <button class="quick-link" onclick="quickRedirect('https://marcoroscioli.github.io/idk/')">
+                    <i class="fas fa-gamepad"></i> My Game
+                </button>
+                <button class="quick-link" onclick="quickRedirect('https://claude.ai/login')">
+                    <i class="fas fa-robot"></i> Claude AI
+                </button>
+                <button class="quick-link" onclick="quickRedirect('https://marcoroscioli.github.io/AAAaA/')">
+                    <i class="fas fa-fighter-jet"></i> Flight Sim
+                </button>
+                <button class="quick-link" onclick="quickRedirect('https://www.gemstone.academy/')">
+                    <i class="fas fa-laptop-code"></i> Learn Coding
+                </button>
+            </div>
+        </div>
+        
+        <!-- Footer -->
+        <div class="footer">
+            HTworkML © 2025 | Press the up-up-down-down-left-right-left-right-B-A keys for a surprise!
         </div>
     </div>
 </body>

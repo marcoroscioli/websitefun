@@ -3,9 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>HTworkML</title>
+    <title>HTworkML Dashboard</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
     <script>
+        // Main search functionality
         function redirectToSearch() {
             const searchInput = document.getElementById('linkInput');
             const searchQuery = searchInput.value.trim();
@@ -19,27 +21,129 @@
             
             // Create search URL with the query
             let searchUrl;
-            if (searchEngine === 'google') {
-                searchUrl = 'https://www.google.com/search?q=' + encodeURIComponent(searchQuery);
-            } else if (searchEngine === 'bing') {
-                searchUrl = 'https://www.bing.com/search?q=' + encodeURIComponent(searchQuery);
-            } else if (searchEngine === 'duckduckgo') {
-                searchUrl = 'https://duckduckgo.com/?q=' + encodeURIComponent(searchQuery);
+            switch(searchEngine) {
+                case 'google':
+                    searchUrl = 'https://www.google.com/search?q=' + encodeURIComponent(searchQuery);
+                    break;
+                case 'bing':
+                    searchUrl = 'https://www.bing.com/search?q=' + encodeURIComponent(searchQuery);
+                    break;
+                case 'duckduckgo':
+                    searchUrl = 'https://duckduckgo.com/?q=' + encodeURIComponent(searchQuery);
+                    break;
+                case 'brave':
+                    searchUrl = 'https://search.brave.com/search?q=' + encodeURIComponent(searchQuery);
+                    break;
+                case 'ecosia':
+                    searchUrl = 'https://www.ecosia.org/search?q=' + encodeURIComponent(searchQuery);
+                    break;
+                default:
+                    searchUrl = 'https://www.google.com/search?q=' + encodeURIComponent(searchQuery);
             }
+            
+            // Save search to history
+            saveSearch(searchQuery, searchEngine);
             
             // Redirect to search
             window.location.href = searchUrl;
         }
 
-        function quickRedirect(url) {
+        // Quick redirect function
+        function quickRedirect(url, siteName) {
+            // Save to recent sites
+            saveRecentSite(siteName, url);
             window.location.href = url;
         }
 
-        function showToast(message) {
+        // Bookmark management
+        function saveRecentSite(name, url) {
+            let recentSites = JSON.parse(localStorage.getItem('htworkml-recent-sites') || '[]');
+            
+            // Check if already exists and remove it
+            recentSites = recentSites.filter(site => site.url !== url);
+            
+            // Add to beginning of array
+            recentSites.unshift({
+                name: name,
+                url: url,
+                timestamp: new Date().toISOString()
+            });
+            
+            // Keep only latest 10
+            if (recentSites.length > 10) {
+                recentSites = recentSites.slice(0, 10);
+            }
+            
+            localStorage.setItem('htworkml-recent-sites', JSON.stringify(recentSites));
+            updateRecentSites();
+        }
+
+        // Save search to history
+        function saveSearch(query, engine) {
+            let searchHistory = JSON.parse(localStorage.getItem('htworkml-search-history') || '[]');
+            
+            searchHistory.unshift({
+                query: query,
+                engine: engine,
+                timestamp: new Date().toISOString()
+            });
+            
+            // Keep only latest 20
+            if (searchHistory.length > 20) {
+                searchHistory = searchHistory.slice(0, 20);
+            }
+            
+            localStorage.setItem('htworkml-search-history', JSON.stringify(searchHistory));
+        }
+
+        // Update recent sites display
+        function updateRecentSites() {
+            const recentSites = JSON.parse(localStorage.getItem('htworkml-recent-sites') || '[]');
+            const container = document.getElementById('recentSitesContainer');
+            
+            if (recentSites.length === 0) {
+                container.innerHTML = '<p class="empty-message">Your recently visited sites will appear here</p>';
+                return;
+            }
+            
+            container.innerHTML = '';
+            
+            recentSites.forEach(site => {
+                const siteEl = document.createElement('div');
+                siteEl.className = 'recent-site';
+                
+                const date = new Date(site.timestamp);
+                const formattedDate = date.toLocaleDateString() + ' ' + date.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+                
+                siteEl.innerHTML = `
+                    <div class="site-info">
+                        <div class="site-name">${site.name}</div>
+                        <div class="site-date">${formattedDate}</div>
+                    </div>
+                    <div class="site-actions">
+                        <button onclick="quickRedirect('${site.url}', '${site.name}')" title="Visit site">
+                            <i class="fas fa-external-link-alt"></i>
+                        </button>
+                    </div>
+                `;
+                
+                container.appendChild(siteEl);
+            });
+        }
+
+        // Show toast notification
+        function showToast(message, type = 'info') {
             const toast = document.createElement('div');
-            toast.className = 'toast';
-            toast.textContent = message;
-            document.body.appendChild(toast);
+            toast.className = `toast toast-${type}`;
+            toast.innerHTML = `
+                <div class="toast-icon">
+                    <i class="fas ${type === 'error' ? 'fa-exclamation-circle' : 'fa-info-circle'}"></i>
+                </div>
+                <div class="toast-message">${message}</div>
+            `;
+            
+            const toastContainer = document.getElementById('toastContainer');
+            toastContainer.appendChild(toast);
             
             setTimeout(() => {
                 toast.classList.add('show');
@@ -48,7 +152,7 @@
             setTimeout(() => {
                 toast.classList.remove('show');
                 setTimeout(() => {
-                    document.body.removeChild(toast);
+                    toastContainer.removeChild(toast);
                 }, 300);
             }, 3000);
         }
@@ -57,6 +161,64 @@
         function switchTheme(theme) {
             document.body.className = theme;
             localStorage.setItem('htworkml-theme', theme);
+            updateThemePreview();
+        }
+
+        // Update theme preview thumbnails
+        function updateThemePreview() {
+            const currentTheme = document.body.className;
+            document.querySelectorAll('.theme-btn').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            document.querySelector(`.${currentTheme.replace('-theme', '-btn')}`).classList.add('active');
+        }
+
+        // Weather functionality
+        async function fetchWeather() {
+            try {
+                // Simulate weather data (in a real app, you'd use a real API)
+                const weatherData = {
+                    temp: Math.floor(Math.random() * 30) + 10,
+                    condition: ['Sunny', 'Cloudy', 'Rainy', 'Snowy', 'Partly Cloudy'][Math.floor(Math.random() * 5)],
+                    location: 'Your Location'
+                };
+                
+                // Update weather display
+                const weatherIcon = getWeatherIcon(weatherData.condition);
+                document.getElementById('weather').innerHTML = `
+                    <div class="weather-icon">${weatherIcon}</div>
+                    <div class="weather-info">
+                        <div class="weather-temp">${weatherData.temp}°C</div>
+                        <div class="weather-condition">${weatherData.condition}</div>
+                    </div>
+                `;
+            } catch (e) {
+                console.error('Weather fetch failed:', e);
+                document.getElementById('weather').innerHTML = `
+                    <div class="weather-icon"><i class="fas fa-cloud"></i></div>
+                    <div class="weather-info">
+                        <div class="weather-condition">Weather unavailable</div>
+                    </div>
+                `;
+            }
+        }
+
+        // Get weather icon based on condition
+        function getWeatherIcon(condition) {
+            switch(condition.toLowerCase()) {
+                case 'sunny':
+                    return '<i class="fas fa-sun"></i>';
+                case 'cloudy':
+                    return '<i class="fas fa-cloud"></i>';
+                case 'rainy':
+                    return '<i class="fas fa-cloud-rain"></i>';
+                case 'snowy':
+                    return '<i class="fas fa-snowflake"></i>';
+                case 'partly cloudy':
+                    return '<i class="fas fa-cloud-sun"></i>';
+                default:
+                    return '<i class="fas fa-cloud"></i>';
+            }
         }
 
         // Clock function
@@ -65,36 +227,191 @@
             const hours = now.getHours().toString().padStart(2, '0');
             const minutes = now.getMinutes().toString().padStart(2, '0');
             const seconds = now.getSeconds().toString().padStart(2, '0');
-            document.getElementById('clock').textContent = `${hours}:${minutes}:${seconds}`;
-        }
-
-        // Initialize when page loads
-        window.onload = function() {
-            // Set saved theme or default
-            const savedTheme = localStorage.getItem('htworkml-theme') || 'green-theme';
-            document.body.className = savedTheme;
             
-            // Start clock
-            updateClock();
-            setInterval(updateClock, 1000);
-
-            // Add search on Enter key
-            document.getElementById('linkInput').addEventListener('keypress', function(e) {
-                if (e.key === 'Enter') {
-                    redirectToSearch();
-                }
-            });
-
-            // Greeting based on time of day
-            const hour = new Date().getHours();
-            let greeting;
-            if (hour < 12) greeting = "Good morning";
-            else if (hour < 18) greeting = "Good afternoon";
-            else greeting = "Good evening";
-            document.getElementById('greeting').textContent = greeting;
+            // Digital clock
+            document.getElementById('clock').textContent = `${hours}:${minutes}:${seconds}`;
+            
+            // Analog clock
+            const secondsDeg = now.getSeconds() * 6;
+            const minutesDeg = now.getMinutes() * 6 + secondsDeg / 60;
+            const hoursDeg = ((now.getHours() % 12) / 12) * 360 + minutesDeg / 12;
+            
+            document.querySelector('.hour-hand').style.transform = `rotate(${hoursDeg}deg)`;
+            document.querySelector('.minute-hand').style.transform = `rotate(${minutesDeg}deg)`;
+            document.querySelector('.second-hand').style.transform = `rotate(${secondsDeg}deg)`;
         }
 
-        // Easter egg
+        // Quote of the day
+        function fetchQuote() {
+            const quotes = [
+                { text: "The only way to do great work is to love what you do.", author: "Steve Jobs" },
+                { text: "Life is what happens when you're busy making other plans.", author: "John Lennon" },
+                { text: "The future belongs to those who believe in the beauty of their dreams.", author: "Eleanor Roosevelt" },
+                { text: "In the middle of difficulty lies opportunity.", author: "Albert Einstein" },
+                { text: "Success is not final, failure is not fatal: It is the courage to continue that counts.", author: "Winston Churchill" },
+                { text: "The best way to predict the future is to create it.", author: "Peter Drucker" },
+                { text: "Strive not to be a success, but rather to be of value.", author: "Albert Einstein" },
+                { text: "The only limit to our realization of tomorrow is our doubts of today.", author: "Franklin D. Roosevelt" }
+            ];
+            
+            // Get quote of the day (changes daily)
+            const today = new Date().toDateString();
+            const quoteIndex = hashCode(today) % quotes.length;
+            
+            const quote = quotes[Math.abs(quoteIndex)];
+            document.getElementById('quote').innerHTML = `
+                <blockquote>${quote.text}</blockquote>
+                <cite>- ${quote.author}</cite>
+            `;
+        }
+
+        // Simple hash function for consistent daily quotes
+        function hashCode(str) {
+            let hash = 0;
+            for (let i = 0; i < str.length; i++) {
+                hash = str.charCodeAt(i) + ((hash << 5) - hash);
+            }
+            return hash;
+        }
+
+        // Notes functionality
+        function setupNotes() {
+            const notes = localStorage.getItem('htworkml-notes') || '';
+            document.getElementById('notesArea').value = notes;
+            
+            // Save notes on input
+            document.getElementById('notesArea').addEventListener('input', function() {
+                localStorage.setItem('htworkml-notes', this.value);
+            });
+        }
+
+        // Game: Rock, Paper, Scissors
+        function playRPS(playerChoice) {
+            const choices = ['rock', 'paper', 'scissors'];
+            const computerChoice = choices[Math.floor(Math.random() * 3)];
+            
+            // Determine winner
+            let result;
+            if (playerChoice === computerChoice) {
+                result = 'It\'s a tie!';
+            } else if (
+                (playerChoice === 'rock' && computerChoice === 'scissors') ||
+                (playerChoice === 'paper' && computerChoice === 'rock') ||
+                (playerChoice === 'scissors' && computerChoice === 'paper')
+            ) {
+                result = 'You win!';
+            } else {
+                result = 'Computer wins!';
+            }
+            
+            // Show result
+            document.getElementById('rpsResult').innerHTML = `
+                <div class="rps-choices">
+                    <div class="rps-choice">
+                        <div class="rps-player">You</div>
+                        <div class="rps-icon"><i class="fas fa-hand-${playerChoice}"></i></div>
+                    </div>
+                    <div class="rps-vs">VS</div>
+                    <div class="rps-choice">
+                        <div class="rps-player">Computer</div>
+                        <div class="rps-icon"><i class="fas fa-hand-${computerChoice}"></i></div>
+                    </div>
+                </div>
+                <div class="rps-result-text">${result}</div>
+            `;
+            
+            document.getElementById('rpsResult').style.display = 'block';
+        }
+
+        // Toggle sections
+        function toggleSection(sectionId) {
+            const section = document.getElementById(sectionId);
+            
+            if (section.classList.contains('section-hidden')) {
+                section.classList.remove('section-hidden');
+                section.classList.add('section-visible');
+            } else {
+                section.classList.remove('section-visible');
+                section.classList.add('section-hidden');
+            }
+            
+            // Save section state
+            const sectionStates = JSON.parse(localStorage.getItem('htworkml-section-states') || '{}');
+            sectionStates[sectionId] = !section.classList.contains('section-hidden');
+            localStorage.setItem('htworkml-section-states', JSON.stringify(sectionStates));
+        }
+
+        // Restore section states
+        function restoreSectionStates() {
+            const sectionStates = JSON.parse(localStorage.getItem('htworkml-section-states') || '{}');
+            
+            for (const [sectionId, isVisible] of Object.entries(sectionStates)) {
+                const section = document.getElementById(sectionId);
+                if (section) {
+                    if (isVisible) {
+                        section.classList.remove('section-hidden');
+                        section.classList.add('section-visible');
+                    } else {
+                        section.classList.remove('section-visible');
+                        section.classList.add('section-hidden');
+                    }
+                }
+            }
+        }
+
+        // Search suggestions
+        function showSearchSuggestions() {
+            const searchHistory = JSON.parse(localStorage.getItem('htworkml-search-history') || '[]');
+            const input = document.getElementById('linkInput');
+            const query = input.value.trim().toLowerCase();
+            
+            if (query.length < 2) {
+                hideSearchSuggestions();
+                return;
+            }
+            
+            // Filter history by query
+            const filteredHistory = searchHistory
+                .filter(item => item.query.toLowerCase().includes(query))
+                .slice(0, 5);
+            
+            if (filteredHistory.length === 0) {
+                hideSearchSuggestions();
+                return;
+            }
+            
+            // Create suggestions dropdown
+            const suggestionsContainer = document.getElementById('searchSuggestions');
+            suggestionsContainer.innerHTML = '';
+            
+            filteredHistory.forEach(item => {
+                const suggestion = document.createElement('div');
+                suggestion.className = 'search-suggestion';
+                suggestion.innerHTML = `
+                    <div class="suggestion-icon">
+                        <i class="fas fa-history"></i>
+                    </div>
+                    <div class="suggestion-text">${item.query}</div>
+                `;
+                
+                suggestion.addEventListener('click', () => {
+                    input.value = item.query;
+                    document.getElementById('searchEngine').value = item.engine;
+                    hideSearchSuggestions();
+                    redirectToSearch();
+                });
+                
+                suggestionsContainer.appendChild(suggestion);
+            });
+            
+            suggestionsContainer.style.display = 'block';
+        }
+
+        function hideSearchSuggestions() {
+            document.getElementById('searchSuggestions').style.display = 'none';
+        }
+
+        // Easter egg: Konami code
         let konamiIndex = 0;
         const konamiCode = [38, 38, 40, 40, 37, 39, 37, 39, 66, 65]; // up up down down left right left right B A
         
@@ -112,10 +429,243 @@
 
         function activateEasterEgg() {
             document.body.classList.add('easter-egg');
-            showToast('🎮 KONAMI CODE ACTIVATED! 🎮');
+            showToast('🎮 KONAMI CODE ACTIVATED! 🎮', 'success');
+            
+            // Add some fun effects
+            const container = document.querySelector('.container');
+            container.classList.add('shake');
+            
+            // Confetti effect
+            for (let i = 0; i < 100; i++) {
+                createConfetti();
+            }
+            
+            // Reset after animation
             setTimeout(() => {
                 document.body.classList.remove('easter-egg');
-            }, 5000);
+                container.classList.remove('shake');
+                document.querySelectorAll('.confetti').forEach(el => {
+                    document.body.removeChild(el);
+                });
+            }, 8000);
+        }
+
+        // Create confetti particles
+        function createConfetti() {
+            const confetti = document.createElement('div');
+            confetti.className = 'confetti';
+            
+            // Random properties
+            const size = Math.random() * 10 + 5;
+            const colors = ['#f44336', '#e91e63', '#9c27b0', '#673ab7', '#3f51b5', '#2196f3', '#03a9f4', '#00bcd4', '#009688', '#4CAF50', '#8BC34A', '#CDDC39', '#FFEB3B', '#FFC107', '#FF9800', '#FF5722'];
+            
+            confetti.style.width = `${size}px`;
+            confetti.style.height = `${size}px`;
+            confetti.style.backgroundColor = colors[Math.floor(Math.random() * colors.length)];
+            
+            // Random position
+            confetti.style.left = `${Math.random() * 100}%`;
+            confetti.style.top = '-10px';
+            
+            // Random animation
+            const animDuration = Math.random() * 3 + 2;
+            const animDelay = Math.random() * 2;
+            
+            confetti.style.animation = `confetti-fall ${animDuration}s ease-in ${animDelay}s forwards`;
+            
+            document.body.appendChild(confetti);
+            
+            // Remove after animation
+            setTimeout(() => {
+                if (document.body.contains(confetti)) {
+                    document.body.removeChild(confetti);
+                }
+            }, (animDuration + animDelay) * 1000);
+        }
+
+        // Initialize when page loads
+        window.onload = function() {
+            // Set saved theme or default
+            const savedTheme = localStorage.getItem('htworkml-theme') || 'blue-theme';
+            document.body.className = savedTheme;
+            updateThemePreview();
+            
+            // Start clock
+            updateClock();
+            setInterval(updateClock, 1000);
+
+            // Add search on Enter key
+            document.getElementById('linkInput').addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') {
+                    redirectToSearch();
+                }
+            });
+            
+            // Add search suggestions
+            document.getElementById('linkInput').addEventListener('input', showSearchSuggestions);
+            document.addEventListener('click', function(e) {
+                if (!document.getElementById('searchSuggestions').contains(e.target) && 
+                    e.target !== document.getElementById('linkInput')) {
+                    hideSearchSuggestions();
+                }
+            });
+
+            // Setup weather
+            fetchWeather();
+            
+            // Setup quote
+            fetchQuote();
+            
+            // Setup notes
+            setupNotes();
+            
+            // Update recent sites
+            updateRecentSites();
+            
+            // Restore section states
+            restoreSectionStates();
+
+            // Greeting based on time of day
+            const hour = new Date().getHours();
+            let greeting;
+            if (hour < 12) greeting = "Good morning";
+            else if (hour < 18) greeting = "Good afternoon";
+            else greeting = "Good evening";
+            document.getElementById('greeting').textContent = greeting;
+            
+            // Initialize tabs
+            $('.tab-content').hide();
+            $('.tab-content:first').show();
+            $('.tabs-nav li:first').addClass('active');
+            
+            $('.tabs-nav li').click(function() {
+                $('.tabs-nav li').removeClass('active');
+                $(this).addClass('active');
+                $('.tab-content').hide();
+                
+                const activeTab = $(this).find('a').attr('href');
+                $(activeTab).fadeIn();
+                return false;
+            });
+            
+            // Setup draggable sections
+            setupDraggableSections();
+        }
+        
+        // Make sections draggable for customization
+        function setupDraggableSections() {
+            let draggedElement = null;
+            const sections = document.querySelectorAll('.section-container');
+            
+            sections.forEach(section => {
+                const handle = section.querySelector('.section-header');
+                
+                handle.addEventListener('mousedown', function(e) {
+                    // Only initiate drag on the header, not on control buttons
+                    if (e.target.closest('.section-toggle')) {
+                        return;
+                    }
+                    
+                    draggedElement = section;
+                    section.classList.add('dragging');
+                    
+                    // Calculate initial mouse position relative to the section
+                    const rect = section.getBoundingClientRect();
+                    section.setAttribute('data-x-offset', e.clientX - rect.left);
+                    section.setAttribute('data-y-offset', e.clientY - rect.top);
+                    
+                    // Set initial position
+                    section.style.position = 'absolute';
+                    section.style.zIndex = 1000;
+                    
+                    // Update position
+                    updateDragPosition(e);
+                });
+            });
+            
+            document.addEventListener('mousemove', function(e) {
+                if (draggedElement) {
+                    updateDragPosition(e);
+                }
+            });
+            
+            document.addEventListener('mouseup', function() {
+                if (draggedElement) {
+                    // Snap into a position
+                    snapToGrid(draggedElement);
+                    
+                    draggedElement.classList.remove('dragging');
+                    draggedElement = null;
+                }
+            });
+        }
+        
+        function updateDragPosition(e) {
+            if (!draggedElement) return;
+            
+            const xOffset = parseInt(draggedElement.getAttribute('data-x-offset'));
+            const yOffset = parseInt(draggedElement.getAttribute('data-y-offset'));
+            
+            draggedElement.style.left = (e.clientX - xOffset) + 'px';
+            draggedElement.style.top = (e.clientY - yOffset) + 'px';
+        }
+        
+        function snapToGrid(element) {
+            // Get container bounds
+            const container = document.querySelector('.sections-grid');
+            const containerRect = container.getBoundingClientRect();
+            
+            // Get element bounds
+            const elementRect = element.getBoundingClientRect();
+            
+            // Snap to positions within the container
+            const left = Math.max(0, Math.min(containerRect.width - elementRect.width, elementRect.left - containerRect.left));
+            const top = Math.max(0, Math.min(containerRect.height - elementRect.height, elementRect.top - containerRect.top));
+            
+            // Update element position
+            element.style.position = 'absolute';
+            element.style.left = left + 'px';
+            element.style.top = top + 'px';
+            
+            // Save position
+            const sectionId = element.id;
+            const positions = JSON.parse(localStorage.getItem('htworkml-section-positions') || '{}');
+            positions[sectionId] = { left, top };
+            localStorage.setItem('htworkml-section-positions', JSON.stringify(positions));
+        }
+        
+        // Restore section positions
+        function restoreSectionPositions() {
+            const positions = JSON.parse(localStorage.getItem('htworkml-section-positions') || '{}');
+            
+            for (const [sectionId, position] of Object.entries(positions)) {
+                const section = document.getElementById(sectionId);
+                if (section) {
+                    section.style.position = 'absolute';
+                    section.style.left = position.left + 'px';
+                    section.style.top = position.top + 'px';
+                }
+            }
+        }
+        
+        // Add dark mode detection
+        function setupDarkModeDetection() {
+            const darkModeMediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+            
+            function updateThemeBasedOnSystemPreference(e) {
+                const prefersDarkMode = e.matches;
+                
+                // Only auto-switch if the user hasn't explicitly set a theme
+                if (!localStorage.getItem('htworkml-theme')) {
+                    switchTheme(prefersDarkMode ? 'dark-theme' : 'blue-theme');
+                }
+            }
+            
+            // Check on load
+            updateThemeBasedOnSystemPreference(darkModeMediaQuery);
+            
+            // Listen for changes
+            darkModeMediaQuery.addEventListener('change', updateThemeBasedOnSystemPreference);
         }
     </script>
     <style>
@@ -123,30 +673,35 @@
         * {
             box-sizing: border-box;
             transition: all 0.3s ease;
+            margin: 0;
+            padding: 0;
         }
         
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             display: flex;
             flex-direction: column;
-            justify-content: center;
+            justify-content: flex-start;
             align-items: center;
-            height: 100vh;
+            min-height: 100vh;
             margin: 0;
-            background-color: #336600;
+            background-color: #003366;
             transition: background-color 0.5s ease;
+            padding: 20px;
+            overflow-x: hidden;
         }
         
         .container {
-            background-color: #008080;
-            padding: 30px;
+            background-color: rgba(0, 85, 128, 0.9);
             border-radius: 20px;
-            box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+            box-shadow: 0 10px 35px rgba(0,0,0,0.3);
             text-align: center;
-            width: 90%;
-            max-width: 1000px;
+            width: 95%;
+            max-width: 1200px;
             position: relative;
             overflow: hidden;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
         }
         
         /* Header section */
@@ -154,385 +709,1022 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-bottom: 25px;
+            padding: 20px 30px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            background-color: rgba(0, 0, 0, 0.2);
         }
         
         .logo {
             font-size: 2.5em;
             font-weight: bold;
             color: white;
-            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+            display: flex;
+            align-items: center;
         }
         
         .logo span {
             color: #ffcc00;
+            position: relative;
+            display: inline-block;
+        }
+        
+        .logo span::after {
+            content: 'Pro';
+            position: absolute;
+            top: -10px;
+            right: -25px;
+            font-size: 0.4em;
+            background-color: #ffcc00;
+            color: #333;
+            padding: 2px 5px;
+            border-radius: 5px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
         }
         
         .utility-bar {
             display: flex;
             align-items: center;
-            gap: 15px;
+            gap: 20px;
         }
         
-        .clock {
-            background-color: rgba(0,0,0,0.2);
-            padding: 8px 12px;
+        .clock-container {
+            position: relative;
+        }
+        
+        .digital-clock {
+            background-color: rgba(0,0,0,0.3);
+            padding: 10px 15px;
             border-radius: 10px;
             color: white;
             font-weight: bold;
+            font-size: 1.2em;
+            letter-spacing: 1px;
+            box-shadow: 0 3px 5px rgba(0,0,0,0.2);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            cursor: pointer;
+        }
+        
+        .analog-clock {
+            position: absolute;
+            top: 60px;
+            right: 0;
+            width: 150px;
+            height: 150px;
+            background-color: rgba(0, 0, 0, 0.8);
+            border-radius: 50%;
+            border: 5px solid rgba(255, 255, 255, 0.1);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.5);
+            display: none;
+            z-index: 100;
+        }
+        
+        .digital-clock:hover + .analog-clock {
+            display: block;
+        }
+        
+        .analog-clock::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 10px;
+            height: 10px;
+            background-color: white;
+            border-radius: 50%;
+            z-index: 10;
+        }
+        
+        .clock-hand {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform-origin: left center;
+            height: 2px;
+            background-color: white;
+        }
+        
+        .hour-hand {
+            width: 30%;
+            height: 4px;
+            background-color: #ffcc00;
+            border-radius: 2px;
+            z-index: 3;
+        }
+        
+        .minute-hand {
+            width: 40%;
+            height: 3px;
+            background-color: #ffffff;
+            border-radius: 1.5px;
+            z-index: 2;
+        }
+        
+        .second-hand {
+            width: 45%;
+            height: 1px;
+            background-color: #ff6347;
+            z-index: 1;
+        }
+        
+        .clock-marker {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 100%;
+            height: 100%;
+        }
+        
+        .clock-marker span {
+            position: absolute;
+            width: 3px;
+            height: 10px;
+            background-color: rgba(255, 255, 255, 0.5);
+            top: 5px;
+            left: 50%;
+            transform: translateX(-50%);
+            transform-origin: bottom center;
+        }
+        
+        .weather {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            background-color: rgba(0,0,0,0.3);
+            padding: 8px 15px;
+            border-radius: 10px;
+            color: white;
+            box-shadow: 0 3px 5px rgba(0,0,0,0.2);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            cursor: pointer;
+        }
+        
+        .weather-icon {
+            font-size: 1.5em;
+            color: #ffcc00;
         }
         
         /* Search section */
-        .search-container {
+        .search-section {
+            padding: 30px;
             position: relative;
-            margin: 20px 0;
         }
         
-        .search-row {
-            display: flex;
-            gap: 10px;
-        }
-        
-        .search-engine-selector {
-            flex: 0 0 120px;
-            background-color: white;
-            border-radius: 10px;
-            padding: 0 10px;
-            border: none;
-            font-size: 16px;
-        }
-        
-        input {
-            flex: 1;
-            padding: 15px;
-            margin: 0;
-            border: none;
-            border-radius: 10px;
-            font-size: 16px;
-            box-shadow: inset 0 2px 5px rgba(0,0,0,0.1);
-        }
-        
-        input:focus {
-            outline: none;
-            box-shadow: 0 0 0 2px #ffcc00;
-        }
-        
-        .redirect-button {
-            background-color: #cc9900;
+        .greeting {
             color: white;
+            font-size: 1.8em;
+            margin-bottom: 20px;
+            font-weight: 300;
+            text-shadow: 1px 1px 3px rgba(0,0,0,0.5);
+        }
+        
+        .search-container {
+            display: flex;
+            justify-content: center;
+            align-items: stretch;
+            width: 100%;
+            max-width: 700px;
+            margin: 0 auto;
+            position: relative;
+        }
+        
+        .search-engine-select {
+            background-color: rgba(0,0,0,0.3);
             border: none;
-            padding: 15px 30px;
-            border-radius: 10px;
+            border-radius: 15px 0 0 15px;
+            color: white;
+            padding: 0 20px;
+            font-size: 1em;
             cursor: pointer;
-            font-weight: bold;
-            font-size: 16px;
-            margin-left: 10px;
+            outline: none;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-right: none;
         }
         
-        .redirect-button:hover {
-            background-color: #ffcc00;
-            transform: translateY(-2px);
-            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
-        }
-        
-        /* Quick links section */
-        .quick-links-section {
-            margin-top: 30px;
-        }
-        
-        .section-title {
-            text-align: left;
+        .search-input {
+            background-color: rgba(255, 255, 255, 0.15);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            flex-grow: 1;
+            padding: 15px 20px;
+            font-size: 1.1em;
+            outline: none;
             color: white;
-            margin-bottom: 10px;
-            font-weight: 500;
+            border-radius: 0;
         }
         
-        .button-group {
+        .search-input::placeholder {
+            color: rgba(255, 255, 255, 0.7);
+        }
+        
+        .search-button {
+            background-color: #ffcc00;
+            border: none;
+            border-radius: 0 15px 15px 0;
+            color: #333;
+            cursor: pointer;
+            padding: 0 25px;
+            font-size: 1.1em;
+            font-weight: bold;
+            box-shadow: 0 3px 5px rgba(0,0,0,0.2);
+            transition: background-color 0.3s;
+        }
+        
+        .search-button:hover {
+            background-color: #ffdd33;
+        }
+        
+        .search-button:active {
+            background-color: #e6b800;
+            transform: scale(0.98);
+        }
+        
+        .search-suggestions {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            background-color: rgba(0, 0, 0, 0.8);
+            border-radius: 0 0 15px 15px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+            z-index: 100;
+            display: none;
+            overflow: hidden;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-top: none;
+        }
+        
+        .search-suggestion {
             display: flex;
-            justify-content: space-between;
-            margin-bottom: 15px;
+            align-items: center;
+            padding: 12px 20px;
+            cursor: pointer;
+            color: rgba(255, 255, 255, 0.9);
+            transition: background-color 0.2s;
+        }
+        
+        .search-suggestion:hover {
+            background-color: rgba(255, 255, 255, 0.1);
+        }
+        
+        .suggestion-icon {
+            margin-right: 10px;
+            color: #888;
+        }
+        
+        /* Quick links */
+        .quick-links {
+            display: flex;
             flex-wrap: wrap;
-            gap: 10px;
+            justify-content: center;
+            gap: 15px;
+            margin: 30px auto;
+            max-width: 800px;
         }
         
         .quick-link {
-            background-color: #4CAF50;
-            color: white;
-            border: none;
+            background-color: rgba(0, 0, 0, 0.3);
+            border-radius: 15px;
             padding: 15px;
-            border-radius: 10px;
-            cursor: pointer;
-            flex: 1;
-            min-width: 120px;
-            font-size: 14px;
-            font-weight: 500;
+            width: 100px;
+            height: 100px;
             display: flex;
+            flex-direction: column;
             align-items: center;
             justify-content: center;
-            gap: 8px;
+            cursor: pointer;
+            box-shadow: 0 3px 8px rgba(0,0,0,0.2);
+            transition: transform 0.3s, background-color 0.3s;
+            border: 1px solid rgba(255, 255, 255, 0.1);
         }
         
         .quick-link:hover {
-            transform: translateY(-3px);
-            box-shadow: 0 6px 12px rgba(0,0,0,0.2);
+            transform: translateY(-5px);
+            background-color: rgba(0, 0, 0, 0.4);
         }
         
-        .quick-link i {
+        .quick-link-icon {
+            font-size: 2.5em;
+            margin-bottom: 8px;
+            color: #ffcc00;
+        }
+        
+        .quick-link-name {
+            color: white;
+            font-size: 0.9em;
+        }
+        
+        /* Main content area */
+        .sections-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            padding: 20px;
+            position: relative;
+            margin-bottom: 30px;
+        }
+        
+        .section-container {
+            background-color: rgba(0, 0, 0, 0.3);
+            border-radius: 15px;
+            overflow: hidden;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+            transition: transform 0.3s;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .section-container.dragging {
+            opacity: 0.8;
+            cursor: grabbing;
+        }
+        
+        .section-header {
+            background-color: rgba(0, 0, 0, 0.3);
+            padding: 12px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            cursor: grab;
+        }
+        
+        .section-header h2 {
+            color: white;
+            font-size: 1.2em;
+            font-weight: 500;
+            margin: 0;
+        }
+        
+        .section-toggle {
+            background: none;
+            border: none;
+            color: rgba(255, 255, 255, 0.7);
+            cursor: pointer;
             font-size: 1.2em;
         }
         
-        /* Theme switcher */
-        .theme-switcher {
-            position: absolute;
-            top: 20px;
-            right: 20px;
+        .section-toggle:hover {
+            color: white;
+        }
+        
+        .section-content {
+            padding: 20px;
+            color: white;
+        }
+        
+        .section-hidden .section-content {
+            display: none;
+        }
+        
+        /* Recent sites section */
+        .recent-sites .empty-message {
+            color: rgba(255, 255, 255, 0.5);
+            text-align: center;
+            font-style: italic;
+            padding: 20px 0;
+        }
+        
+        .recent-site {
             display: flex;
-            gap: 10px;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
         }
         
-        .theme-btn {
-            width: 25px;
-            height: 25px;
-            border-radius: 50%;
-            border: 2px solid white;
+        .recent-site:last-child {
+            border-bottom: none;
+        }
+        
+        .site-info {
+            display: flex;
+            flex-direction: column;
+            text-align: left;
+        }
+        
+        .site-name {
+            font-weight: 500;
+            margin-bottom: 3px;
+        }
+        
+        .site-date {
+            font-size: 0.8em;
+            color: rgba(255, 255, 255, 0.6);
+        }
+        
+        .site-actions button {
+            background: none;
+            border: none;
+            color: #ffcc00;
             cursor: pointer;
+            font-size: 1.1em;
+            padding: 5px;
+            transition: transform 0.2s;
         }
         
-        .theme-btn:hover {
+        .site-actions button:hover {
             transform: scale(1.2);
         }
         
-        .green-btn {
-            background-color: #336600;
+        /* Notes section */
+        .notes-area {
+            width: 100%;
+            height: 200px;
+            background-color: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 10px;
+            color: white;
+            padding: 15px;
+            resize: none;
+            font-family: inherit;
+            font-size: 1em;
+            outline: none;
+        }
+        
+        .notes-area:focus {
+            background-color: rgba(255, 255, 255, 0.15);
+            border-color: rgba(255, 255, 255, 0.3);
+        }
+        
+        /* Quote section */
+        .quote-section blockquote {
+            font-style: italic;
+            margin-bottom: 10px;
+            position: relative;
+            padding: 0 20px;
+        }
+        
+        .quote-section blockquote::before,
+        .quote-section blockquote::after {
+            content: '"';
+            font-size: 1.5em;
+            color: rgba(255, 255, 255, 0.4);
+            position: absolute;
+        }
+        
+        .quote-section blockquote::before {
+            left: 0;
+            top: -5px;
+        }
+        
+        .quote-section blockquote::after {
+            right: 0;
+            bottom: -10px;
+        }
+        
+        .quote-section cite {
+            display: block;
+            text-align: right;
+            font-style: normal;
+            color: #ffcc00;
+        }
+        
+        /* Game section */
+        .game-section .game-buttons {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        
+        .game-button {
+            background-color: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 10px;
+            color: white;
+            cursor: pointer;
+            padding: 10px 0;
+            width: 70px;
+            font-size: 2em;
+            transition: transform 0.2s, background-color 0.2s;
+        }
+        
+        .game-button:hover {
+            background-color: rgba(255, 255, 255, 0.2);
+            transform: translateY(-3px);
+        }
+        
+        .game-button:active {
+            transform: scale(0.95);
+        }
+        
+        .rps-result {
+            display: none;
+            background-color: rgba(0, 0, 0, 0.2);
+            padding: 15px;
+            border-radius: 10px;
+            margin-top: 20px;
+        }
+        
+        .rps-choices {
+            display: flex;
+            justify-content: space-around;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+        
+        .rps-choice {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        
+        .rps-player {
+            margin-bottom: 5px;
+            font-weight: 500;
+        }
+        
+        .rps-icon {
+            font-size: 2em;
+            color: #ffcc00;
+        }
+        
+        .rps-vs {
+            font-weight: bold;
+            font-size: 1.2em;
+            color: rgba(255, 255, 255, 0.7);
+        }
+        
+        .rps-result-text {
+            text-align: center;
+            font-weight: bold;
+            font-size: 1.2em;
+        }
+        
+        /* Tabs component */
+        .tabs {
+            margin-top: 20px;
+        }
+        
+        .tabs-nav {
+            display: flex;
+            list-style: none;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+            padding: 0;
+            margin: 0;
+        }
+        
+        .tabs-nav li {
+            margin-right: 5px;
+        }
+        
+        .tabs-nav li a {
+            display: block;
+            padding: 10px 15px;
+            color: rgba(255, 255, 255, 0.7);
+            text-decoration: none;
+            border-radius: 5px 5px 0 0;
+            transition: background-color 0.2s;
+        }
+        
+        .tabs-nav li.active a,
+        .tabs-nav li a:hover {
+            background-color: rgba(255, 255, 255, 0.1);
+            color: white;
+        }
+        
+        .tab-content {
+            padding: 15px 0;
+        }
+        
+        /* Settings panel */
+        .settings-section .theme-options {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        
+        .theme-btn {
+            background-color: rgba(255, 255, 255, 0.1);
+            border: 2px solid transparent;
+            border-radius: 10px;
+            padding: 10px;
+            width: 80px;
+            height: 50px;
+            cursor: pointer;
+            transition: transform 0.2s;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .theme-btn:hover {
+            transform: scale(1.05);
+        }
+        
+        .theme-btn.active {
+            border-color: #ffcc00;
+            box-shadow: 0 0 10px rgba(255, 204, 0, 0.5);
         }
         
         .blue-btn {
-            background-color: #003366;
+            background: linear-gradient(to bottom, #003366 50%, #005599 50%);
         }
         
         .dark-btn {
-            background-color: #222;
+            background: linear-gradient(to bottom, #222 50%, #444 50%);
+        }
+        
+        .green-btn {
+            background: linear-gradient(to bottom, #004d00 50%, #006600 50%);
         }
         
         .purple-btn {
-            background-color: #660066;
+            background: linear-gradient(to bottom, #330033 50%, #660066 50%);
         }
         
-        /* Greeting */
-        .greeting {
-            color: white;
-            font-size: 1.2em;
-            margin-bottom: 20px;
-            text-align: left;
-            padding-left: 5px;
+        .theme-options p {
+            margin-top: 20px;
+            color: rgba(255, 255, 255, 0.7);
+            font-size: 0.9em;
         }
         
-        /* Toast notification */
-        .toast {
+        /* Toast notifications */
+        .toast-container {
             position: fixed;
-            bottom: 20px;
-            left: 50%;
-            transform: translateX(-50%) translateY(100px);
-            background-color: rgba(0,0,0,0.8);
+            top: 20px;
+            right: 20px;
+            z-index: 9999;
+        }
+        
+        .toast {
+            display: flex;
+            align-items: center;
+            background-color: rgba(0, 0, 0, 0.8);
             color: white;
-            padding: 12px 25px;
-            border-radius: 30px;
-            opacity: 0;
-            transition: all 0.3s ease;
+            border-radius: 10px;
+            margin-bottom: 10px;
+            padding: 12px 20px;
+            width: 300px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+            transform: translateX(120%);
+            transition: transform 0.3s ease;
+            backdrop-filter: blur(5px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
         }
         
         .toast.show {
-            transform: translateX(-50%) translateY(0);
-            opacity: 1;
+            transform: translateX(0);
+        }
+        
+        .toast-icon {
+            margin-right: 15px;
+            font-size: 1.2em;
+        }
+        
+        .toast-info .toast-icon {
+            color: #3498db;
+        }
+        
+        .toast-error .toast-icon {
+            color: #e74c3c;
+        }
+        
+        .toast-success .toast-icon {
+            color: #2ecc71;
         }
         
         /* Footer */
         .footer {
-            margin-top: 20px;
-            color: rgba(255,255,255,0.7);
-            font-size: 0.8em;
+            padding: 20px;
+            text-align: center;
+            color: rgba(255, 255, 255, 0.5);
+            font-size: 0.9em;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+            background-color: rgba(0, 0, 0, 0.2);
         }
         
-        /* Theme variants */
-        .green-theme {
-            background-color: #336600;
+        .footer a {
+            color: #ffcc00;
+            text-decoration: none;
         }
         
-        .green-theme .container {
-            background-color: #008080;
+        .footer a:hover {
+            text-decoration: underline;
         }
         
-        .green-theme .quick-link {
-            background-color: #4CAF50;
-        }
-        
+        /* Themes */
         .blue-theme {
             background-color: #003366;
         }
         
         .blue-theme .container {
-            background-color: #005580;
-        }
-        
-        .blue-theme .quick-link {
-            background-color: #0077cc;
+            background-color: rgba(0, 85, 128, 0.9);
         }
         
         .dark-theme {
-            background-color: #222;
+            background-color: #111;
         }
         
         .dark-theme .container {
-            background-color: #333;
+            background-color: rgba(30, 30, 30, 0.9);
         }
         
-        .dark-theme .quick-link {
-            background-color: #444;
+        .green-theme {
+            background-color: #004d00;
+        }
+        
+        .green-theme .container {
+            background-color: rgba(0, 102, 0, 0.9);
         }
         
         .purple-theme {
-            background-color: #660066;
+            background-color: #330033;
         }
         
         .purple-theme .container {
-            background-color: #990099;
+            background-color: rgba(85, 0, 85, 0.9);
         }
         
-        .purple-theme .quick-link {
-            background-color: #cc00cc;
+        /* Konami code easter egg animation */
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            10%, 30%, 50%, 70%, 90% { transform: translateX(-5px); }
+            20%, 40%, 60%, 80% { transform: translateX(5px); }
         }
         
-        /* Easter egg animation */
+        .shake {
+            animation: shake 0.8s ease-in-out;
+        }
+        
         .easter-egg {
-            animation: rainbow 5s linear infinite;
+            overflow: hidden;
         }
         
-        @keyframes rainbow {
-            0% { background-color: red; }
-            14% { background-color: orange; }
-            28% { background-color: yellow; }
-            42% { background-color: green; }
-            56% { background-color: blue; }
-            70% { background-color: indigo; }
-            84% { background-color: violet; }
-            100% { background-color: red; }
+        @keyframes confetti-fall {
+            0% {
+                transform: translateY(0) rotate(0deg);
+                opacity: 1;
+            }
+            100% {
+                transform: translateY(100vh) rotate(720deg);
+                opacity: 0;
+            }
         }
         
-        /* Responsive adjustments */
-        @media (max-width: 768px) {
-            .container {
-                width: 95%;
-                padding: 20px;
-            }
-            
-            .logo {
-                font-size: 1.8em;
-            }
-            
-            .button-group {
+        .confetti {
+            position: fixed;
+            z-index: 999;
+            border-radius: 3px;
+        }
+        
+        /* Responsive design */
+        @media (max-width: 900px) {
+            .header {
                 flex-direction: column;
+                gap: 15px;
             }
             
-            .search-row {
+            .utility-bar {
+                width: 100%;
+                justify-content: center;
+            }
+            
+            .search-container {
                 flex-direction: column;
+                gap: 10px;
             }
             
-            .search-engine-selector {
-                flex: 1;
+            .search-engine-select,
+            .search-input,
+            .search-button {
+                border-radius: 15px;
                 width: 100%;
             }
             
-            .redirect-button {
-                margin-left: 0;
-                margin-top: 10px;
+            .quick-links {
+                gap: 10px;
+            }
+            
+            .quick-link {
+                width: 80px;
+                height: 80px;
+            }
+            
+            .sections-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+        
+        @media (max-width: 600px) {
+            .container {
+                border-radius: 15px;
+                width: 100%;
+            }
+            
+            .logo {
+                font-size: 2em;
+            }
+            
+            .greeting {
+                font-size: 1.5em;
+            }
+            
+            .utility-bar {
+                flex-wrap: wrap;
+                gap: 10px;
             }
         }
     </style>
 </head>
-<body class="green-theme">
+<body class="blue-theme">
+    <!-- Toast container -->
+    <div id="toastContainer" class="toast-container"></div>
+
     <div class="container">
-        <!-- Theme Switcher -->
-        <div class="theme-switcher">
-            <div class="theme-btn green-btn" onclick="switchTheme('green-theme')" title="Green Theme"></div>
-            <div class="theme-btn blue-btn" onclick="switchTheme('blue-theme')" title="Blue Theme"></div>
-            <div class="theme-btn dark-btn" onclick="switchTheme('dark-theme')" title="Dark Theme"></div>
-            <div class="theme-btn purple-btn" onclick="switchTheme('purple-theme')" title="Purple Theme"></div>
-        </div>
-        
-        <!-- Header -->
+        <!-- Header section -->
         <div class="header">
-            <div class="logo">HT<span>work</span>ML</div>
+            <div class="logo">HTwork<span>ML</span></div>
             <div class="utility-bar">
-                <div class="clock" id="clock">00:00:00</div>
+                <div class="clock-container">
+                    <div id="clock" class="digital-clock">00:00:00</div>
+                    <div class="analog-clock">
+                        <div class="hour-hand clock-hand"></div>
+                        <div class="minute-hand clock-hand"></div>
+                        <div class="second-hand clock-hand"></div>
+                        <div class="clock-marker">
+                            <span style="transform: rotate(0deg) translateY(-50%)"></span>
+                            <span style="transform: rotate(30deg) translateY(-50%)"></span>
+                            <span style="transform: rotate(60deg) translateY(-50%)"></span>
+                            <span style="transform: rotate(90deg) translateY(-50%)"></span>
+                            <span style="transform: rotate(120deg) translateY(-50%)"></span>
+                            <span style="transform: rotate(150deg) translateY(-50%)"></span>
+                            <span style="transform: rotate(180deg) translateY(-50%)"></span>
+                            <span style="transform: rotate(210deg) translateY(-50%)"></span>
+                            <span style="transform: rotate(240deg) translateY(-50%)"></span>
+                            <span style="transform: rotate(270deg) translateY(-50%)"></span>
+                            <span style="transform: rotate(300deg) translateY(-50%)"></span>
+                            <span style="transform: rotate(330deg) translateY(-50%)"></span>
+                        </div>
+                    </div>
+                </div>
+                <div id="weather" class="weather">
+                    <div class="weather-icon"><i class="fas fa-cloud"></i></div>
+                    <div class="weather-info">
+                        <div class="weather-condition">Loading...</div>
+                    </div>
+                </div>
             </div>
         </div>
-        
-        <!-- Greeting -->
-        <div class="greeting" id="greeting">Good day</div>
-        
-        <!-- Search Section -->
-        <div class="search-container">
-            <div class="search-row">
-                <select id="searchEngine" class="search-engine-selector">
+
+        <!-- Search section -->
+        <div class="search-section">
+            <h1 id="greeting" class="greeting">Good day</h1>
+            <div class="search-container">
+                <select id="searchEngine" class="search-engine-select">
                     <option value="google">Google</option>
                     <option value="bing">Bing</option>
                     <option value="duckduckgo">DuckDuckGo</option>
+                    <option value="brave">Brave</option>
+                    <option value="ecosia">Ecosia</option>
                 </select>
-                <input 
-                    type="text" 
-                    id="linkInput" 
-                    placeholder="Enter search terms..."
-                >
-                <button class="redirect-button" onclick="redirectToSearch()">
-                    <i class="fas fa-search"></i> Search
+                <input type="text" id="linkInput" class="search-input" placeholder="Search the web...">
+                <button onclick="redirectToSearch()" class="search-button">
+                    <i class="fas fa-search"></i>
                 </button>
+                <div id="searchSuggestions" class="search-suggestions"></div>
+            </div>
+
+            <!-- Quick links -->
+            <div class="quick-links">
+                <div class="quick-link" onclick="quickRedirect('https://www.google.com/maps', 'Google Maps')">
+                    <div class="quick-link-icon"><i class="fas fa-map-marker-alt"></i></div>
+                    <div class="quick-link-name">Maps</div>
+                </div>
+                <div class="quick-link" onclick="quickRedirect('https://www.youtube.com', 'YouTube')">
+                    <div class="quick-link-icon"><i class="fab fa-youtube"></i></div>
+                    <div class="quick-link-name">YouTube</div>
+                </div>
+                <div class="quick-link" onclick="quickRedirect('https://mail.google.com', 'Gmail')">
+                    <div class="quick-link-icon"><i class="fas fa-envelope"></i></div>
+                    <div class="quick-link-name">Gmail</div>
+                </div>
+                <div class="quick-link" onclick="quickRedirect('https://www.amazon.com', 'Amazon')">
+                    <div class="quick-link-icon"><i class="fab fa-amazon"></i></div>
+                    <div class="quick-link-name">Amazon</div>
+                </div>
+                <div class="quick-link" onclick="quickRedirect('https://www.netflix.com', 'Netflix')">
+                    <div class="quick-link-icon"><i class="fas fa-film"></i></div>
+                    <div class="quick-link-name">Netflix</div>
+                </div>
+                <div class="quick-link" onclick="quickRedirect('https://www.twitter.com', 'Twitter')">
+                    <div class="quick-link-icon"><i class="fab fa-twitter"></i></div>
+                    <div class="quick-link-name">Twitter</div>
+                </div>
+                <div class="quick-link" onclick="quickRedirect('https://www.facebook.com', 'Facebook')">
+                    <div class="quick-link-icon"><i class="fab fa-facebook"></i></div>
+                    <div class="quick-link-name">Facebook</div>
+                </div>
+                <div class="quick-link" onclick="quickRedirect('https://www.linkedin.com', 'LinkedIn')">
+                    <div class="quick-link-icon"><i class="fab fa-linkedin"></i></div>
+                    <div class="quick-link-name">LinkedIn</div>
+                </div>
             </div>
         </div>
-        
-        <!-- Quick Links Section -->
-        <div class="quick-links-section">
-            <div class="section-title">Popular Sites</div>
-            <div class="button-group">
-                <button class="quick-link" onclick="quickRedirect('https://www.google.com')">
-                    <i class="fab fa-google"></i> Google
-                </button>
-                <button class="quick-link" onclick="quickRedirect('https://www.youtube.com/')">
-                    <i class="fab fa-youtube"></i> YouTube
-                </button>
-                <button class="quick-link" onclick="quickRedirect('https://starblast.io/')">
-                    <i class="fas fa-rocket"></i> Starblast.io
-                </button>
-                <button class="quick-link" onclick="quickRedirect('https://htmledit.squarefree.com/')">
-                    <i class="fas fa-code"></i> Code Compiler
-                </button>
-                <button class="quick-link" onclick="quickRedirect('https://www.chess.com/')">
-                    <i class="fas fa-chess"></i> Chess.com
-                </button>
+
+        <!-- Main content area with draggable sections -->
+        <div class="sections-grid">
+            <!-- Recent sites section -->
+            <div id="recentSitesSection" class="section-container section-visible">
+                <div class="section-header">
+                    <h2>Recent Sites</h2>
+                    <button class="section-toggle" onclick="toggleSection('recentSitesSection')">
+                        <i class="fas fa-chevron-up"></i>
+                    </button>
+                </div>
+                <div class="section-content">
+                    <div id="recentSitesContainer" class="recent-sites">
+                        <p class="empty-message">Your recently visited sites will appear here</p>
+                    </div>
+                </div>
             </div>
-            
-            <div class="button-group">
-                <button class="quick-link" onclick="quickRedirect('https://www.geo-fs.com/')">
-                    <i class="fas fa-plane"></i> Geo-FS
-                </button>
-                <button class="quick-link" onclick="quickRedirect('https://marcoroscioli.github.io/idk/')">
-                    <i class="fas fa-gamepad"></i> My Game
-                </button>
-                <button class="quick-link" onclick="quickRedirect('https://claude.ai/login')">
-                    <i class="fas fa-robot"></i> Claude AI
-                </button>
-                <button class="quick-link" onclick="quickRedirect('https://marcoroscioli.github.io/AAAaA/')">
-                    <i class="fas fa-fighter-jet"></i> Flight Sim
-                </button>
-                <button class="quick-link" onclick="quickRedirect('https://www.gemstone.academy/')">
-                    <i class="fas fa-laptop-code"></i> Learn Coding
-                </button>
+
+            <!-- Notes section -->
+            <div id="notesSection" class="section-container section-visible">
+                <div class="section-header">
+                    <h2>Quick Notes</h2>
+                    <button class="section-toggle" onclick="toggleSection('notesSection')">
+                        <i class="fas fa-chevron-up"></i>
+                    </button>
+                </div>
+                <div class="section-content">
+                    <textarea id="notesArea" class="notes-area" placeholder="Write your notes here..."></textarea>
+                </div>
+            </div>
+
+            <!-- Quote section -->
+            <div id="quoteSection" class="section-container section-visible">
+                <div class="section-header">
+                    <h2>Quote of the Day</h2>
+                    <button class="section-toggle" onclick="toggleSection('quoteSection')">
+                        <i class="fas fa-chevron-up"></i>
+                    </button>
+                </div>
+                <div class="section-content quote-section">
+                    <div id="quote"></div>
+                </div>
+            </div>
+
+            <!-- Game section -->
+            <div id="gameSection" class="section-container section-visible">
+                <div class="section-header">
+                    <h2>Quick Game</h2>
+                    <button class="section-toggle" onclick="toggleSection('gameSection')">
+                        <i class="fas fa-chevron-up"></i>
+                    </button>
+                </div>
+                <div class="section-content game-section">
+                    <p>Rock, Paper, Scissors</p>
+                    <div class="game-buttons">
+                        <button class="game-button" onclick="playRPS('rock')">
+                            <i class="fas fa-hand-rock"></i>
+                        </button>
+                        <button class="game-button" onclick="playRPS('paper')">
+                            <i class="fas fa-hand-paper"></i>
+                        </button>
+                        <button class="game-button" onclick="playRPS('scissors')">
+                            <i class="fas fa-hand-scissors"></i>
+                        </button>
+                    </div>
+                    <div id="rpsResult" class="rps-result"></div>
+                </div>
+            </div>
+
+            <!-- Settings section -->
+            <div id="settingsSection" class="section-container section-visible">
+                <div class="section-header">
+                    <h2>Settings</h2>
+                    <button class="section-toggle" onclick="toggleSection('settingsSection')">
+                        <i class="fas fa-chevron-up"></i>
+                    </button>
+                </div>
+                <div class="section-content settings-section">
+                    <div class="tabs">
+                        <ul class="tabs-nav">
+                            <li><a href="#tab-appearance">Appearance</a></li>
+                            <li><a href="#tab-about">About</a></li>
+                        </ul>
+                        <div id="tab-appearance" class="tab-content">
+                            <h3>Theme</h3>
+                            <div class="theme-options">
+                                <div class="theme-btn blue-btn" onclick="switchTheme('blue-theme')"></div>
+                                <div class="theme-btn dark-btn" onclick="switchTheme('dark-theme')"></div>
+                                <div class="theme-btn green-btn" onclick="switchTheme('green-theme')"></div>
+                                <div class="theme-btn purple-btn" onclick="switchTheme('purple-theme')"></div>
+                            </div>
+                            <p>Pro tip: Try the Konami code for a surprise!</p>
+                        </div>
+                        <div id="tab-about" class="tab-content">
+                            <h3>HTworkML Dashboard</h3>
+                            <p>Version 1.2.0</p>
+                            <p>A personal productivity dashboard for your browser.</p>
+                            <p>&copy; 2025 HTworkML</p>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
-        
+
         <!-- Footer -->
         <div class="footer">
-            Press the up-up-down-down-left-right-left-right-B-A keys for a surprise!
-        </div>
-    </div>
-</body>
-</html>
+            <p>HTworkML Dashboard &copy; 2025 - Your personal productivity hub</p>
